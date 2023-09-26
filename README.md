@@ -1,7 +1,3 @@
-- Goals
-  - Fix the core profile BS that modern macOS apparently requires
-  - Get audio working (Eventually)
-
 # Percyqaz.Flux
 
 Multi-purpose rhythm game engine built on top of OpenTK
