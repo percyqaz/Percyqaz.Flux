@@ -1,8 +1,5 @@
-﻿#nowarn "9"
+﻿namespace Percyqaz.Flux.Windowing
 
-namespace Percyqaz.Flux.Windowing
-
-open System
 open System.Threading
 open OpenTK
 open OpenTK.Mathematics
@@ -77,10 +74,13 @@ type Window(config: Config, title: string, root: Root) as this =
         refresh_rate <- monitor.CurrentVideoMode.RefreshRate
         renderThread.RenderMode <- config.RenderMode.Value
 
+        let was_fullscreen = base.WindowState = WindowState.Fullscreen
+
         match config.WindowMode.Value with
 
         | WindowType.Windowed ->
             base.WindowState <- WindowState.Normal
+            if was_fullscreen then Thread.Sleep(100)
             let width, height = config.WindowResolution.Value
             base.WindowBorder <- WindowBorder.Fixed
             base.ClientRectangle <- new Box2i(monitor.ClientArea.Min.X, monitor.ClientArea.Min.Y, monitor.ClientArea.Min.X + width, monitor.ClientArea.Min.Y + height)
@@ -88,6 +88,7 @@ type Window(config: Config, title: string, root: Root) as this =
 
         | WindowType.Borderless ->
             base.WindowState <- WindowState.Normal
+            if was_fullscreen then Thread.Sleep(100)
             base.ClientRectangle <- new Box2i(monitor.ClientArea.Min - Vector2i(1, 1), monitor.ClientArea.Max + Vector2i(1, 1))
             base.WindowBorder <- WindowBorder.Hidden
             base.WindowState <- WindowState.Maximized
@@ -95,12 +96,13 @@ type Window(config: Config, title: string, root: Root) as this =
         | WindowType.Fullscreen ->
             base.WindowState <- WindowState.Fullscreen
             let monitor = monitor.Handle.ToUnsafePtr<Monitor>()
-            let modePtr = GLFW.GetVideoMode(monitor)
-            let mode = NativeInterop.NativePtr.read modePtr
+            let modes = GLFW.GetVideoModes(monitor)
+            let mode = modes.[modes.Length - 1]
             GLFW.SetWindowMonitor(this.WindowPtr, monitor, 0, 0, mode.Width, mode.Height, max config.FullscreenRefreshRateOverride.Value mode.RefreshRate)
 
         | WindowType.``Borderless Fullscreen`` ->
             base.WindowState <- WindowState.Normal
+            if was_fullscreen then Thread.Sleep(100)
             base.WindowBorder <- WindowBorder.Hidden
             base.ClientRectangle <- new Box2i(monitor.ClientArea.Min, monitor.ClientArea.Max)
             base.CenterWindow()
@@ -144,7 +146,7 @@ type Window(config: Config, title: string, root: Root) as this =
                 Window.action_queue <- []
             )
             this.ProcessInputEvents()
-            GLFW.WaitEvents()
+            GLFW.PollEvents()
             InputThread.poll(this.KeyboardState, this.MouseState)
 
         this.OnUnload()
