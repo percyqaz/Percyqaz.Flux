@@ -15,7 +15,7 @@ open Percyqaz.Flux.UI
 open Percyqaz.Common
 
 type RenderThread(window: NativeWindow, audioDevice: int, root: Root, afterInit: unit -> unit) =
-    
+
     let mutable resized = false
     let mutable fps_count = 0
     let fps_timer = Stopwatch()
@@ -30,7 +30,8 @@ type RenderThread(window: NativeWindow, audioDevice: int, root: Root, afterInit:
     member this.OnResize(newSize: Vector2i, refresh_rate: int) =
         Render.resize(newSize.X, newSize.Y)
         monitor_refresh_period <- 1000.0 / float refresh_rate
-        GLFW.SwapInterval (if vsync then -1 else 0)
+        if not (OperatingSystem.IsMacOS()) then
+            GLFW.SwapInterval (if vsync then -1 else 0)
         resized <- true
 
     member private this.Loop() =
@@ -63,9 +64,10 @@ type RenderThread(window: NativeWindow, audioDevice: int, root: Root, afterInit:
         Render.Performance.update_time <- after_update - before_update
         if root.ShouldExit then window.Close()
 
-        if vsync <> (this.RenderMode = FrameLimit.Smart) then
-            vsync <- this.RenderMode = FrameLimit.Smart
-            GLFW.SwapInterval (if vsync then -1 else 0)
+        if not (OperatingSystem.IsMacOS()) then
+            if vsync <> (this.RenderMode = FrameLimit.Smart) then
+                vsync <- this.RenderMode = FrameLimit.Smart
+                GLFW.SwapInterval (if vsync then -1 else 0)
         
         // Draw
         // Estimated latency between this frame being drawn and sent to the monitor is calculated
