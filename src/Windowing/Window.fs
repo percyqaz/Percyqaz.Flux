@@ -41,7 +41,7 @@ module Window =
 
 [<Sealed>]
 type Window(config: Config, title: string, root: Root) as this =
-    inherit NativeWindow(NativeWindowSettings(StartVisible = false, NumberOfSamples = 1, Flags = ContextFlags.ForwardCompatible, Profile = ContextProfile.Core))
+    inherit NativeWindow(NativeWindowSettings(StartVisible = false, NumberOfSamples = (if OperatingSystem.IsMacOS() then 1 else 24), Flags = ContextFlags.ForwardCompatible, Profile = ContextProfile.Core))
 
     let renderThread = RenderThread(this, config.AudioDevice.Value, root, WindowEvents.afterInit.Trigger)
 
