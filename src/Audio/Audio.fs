@@ -11,12 +11,11 @@ module private Helpers =
 
 type Song =
     {
-        Path: string
         ID: int
         Frequency: int // in hz
         Duration: float32<ms>
     }
-    static member Default = { Path = ""; ID = 0; Frequency = 1; Duration = 1000.0f<ms> }
+    static member Default = { ID = 0; Frequency = 1; Duration = 1000.0f<ms> }
     static member FromFile(file: string) =
         //let ID = Bass.CreateStream(file, int64 0, int64 0, BassFlags.Decode); //loads file
         let ID = Bass.CreateStream(file, 0L, 0L, BassFlags.Prescan)
@@ -28,20 +27,21 @@ type Song =
             let Duration = Bass.ChannelBytes2Seconds(ID, Bass.ChannelGetLength ID) * 1000.0
             let Frequency = d.Frequency
             //let ID = BassFx.TempoCreate(ID, BassFlags.FxFreeSource)
-            { Path = file; ID = ID; Frequency = Frequency; Duration = float32 Duration * 1.0f<ms> }
+            { ID = ID; Frequency = Frequency; Duration = float32 Duration * 1.0f<ms> }
     member this.Free() = Bass.StreamFree this.ID |> bassError
 
 [<RequireQualifiedAccess>]
 type SongFinishAction =
-    | Loop
+    | LoopFromPreview
+    | LoopFromBeginning
     | Wait
-    | Stop
-    | Callback of (unit -> unit)
 
 module Song = 
 
     let LEADIN_TIME = 2000.0f<ms>
     
+    let mutable load_path : string option = None
+
     let mutable nowplaying : Song = Song.Default
     let private timer = new Stopwatch()
     let mutable private timerStart = 0.0f<ms>
@@ -50,6 +50,8 @@ module Song =
     let mutable localOffset = 0.0f<ms>
     let mutable private globalOffset = 0.0f<ms>
     let mutable onFinish = SongFinishAction.Wait
+    let mutable private preview_point = 0.0f<ms>
+    let mutable private last_note = 0.0f<ms>
 
     let duration() = nowplaying.Duration
 
@@ -105,20 +107,39 @@ module Song =
     let changeLocalOffset(offset) = localOffset <- offset
     let changeGlobalOffset(offset) = globalOffset <- offset
 
-    let change (path: string option, offset, rate) : bool =
-        let isDifferentFile = path <> Some nowplaying.Path
+    let private song_loader =
+        { new Async.SwitchService<string option, Song>() with
+            override this.Process(path) =
+                async {
+                    return 
+                        match path with
+                        | Some p -> Song.FromFile p
+                        | None -> Song.Default
+                }
+            override this.Handle(song) =
+                nowplaying <- song
+                changeRate rate
+                playFrom preview_point
+        }
+
+    let change (path: string option, offset: Time, new_rate: float32, (preview, chart_last_note)) =
+        let isDifferentFile = path <> load_path
+        load_path <- path
+        preview_point <- preview
+        last_note <- chart_last_note
+        changeLocalOffset offset
+        changeRate new_rate
         if isDifferentFile then
             if playing() then pause()
             timerStart <- -infinityf * 1.0f<ms>
             if nowplaying.ID <> 0 then
                 nowplaying.Free()
             channelPlaying <- false
-            nowplaying <- match path with Some p -> Song.FromFile p | None -> Song.Default
-        changeLocalOffset offset
-        changeRate rate
-        isDifferentFile
+            song_loader.Request(path)
 
     let update() =
+
+        song_loader.Join()
 
         let t = time()
         if (t >= 0.0f<ms> && t < nowplaying.Duration && not channelPlaying) then
@@ -128,10 +149,9 @@ module Song =
         elif t > nowplaying.Duration then
             channelPlaying <- false
             match onFinish with
-            | SongFinishAction.Loop -> playFrom 0.0f<ms>
+            | SongFinishAction.LoopFromPreview -> if t >= last_note then playFrom preview_point
+            | SongFinishAction.LoopFromBeginning -> if t >= last_note then playFrom 0.0f<ms>
             | SongFinishAction.Wait -> ()
-            | SongFinishAction.Stop -> pause() // todo: don't pause every frame
-            | SongFinishAction.Callback f -> f()
 
 type SoundEffect =
     {
