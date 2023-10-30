@@ -95,11 +95,12 @@ module Song =
         timer.Start()
 
     let changeRate(newRate) =
+        let didRateChange = rate <> newRate
         let time = time()
         rate <- newRate
         //if (true) then Bass.ChannelSetAttribute(nowplaying.ID, ChannelAttribute.Pitch, -Math.Log(float rate, 2.0) * 12.0) |> bassError
         Bass.ChannelSetAttribute(nowplaying.ID, ChannelAttribute.Frequency, float32 nowplaying.Frequency * rate) |> bassError
-        seek time
+        if didRateChange then seek time
 
     let changeLocalOffset(offset) = localOffset <- offset
     let changeGlobalOffset(offset) = globalOffset <- offset
