@@ -1,3 +1,10 @@
+> [!WARNING]
+> This repository has moved! I have inlined it into [the YAVSRG monorepo](https://github.com/YAVSRG/YAVSRG) because it is used specifically by that project and nowhere else  
+> Perhaps in the future it will be available as a package from there
+> 
+> Please see below for the original README
+
+----
 # Percyqaz.Flux
 
 This is my custom game engine built on top of [OpenTK](https://github.com/opentk/opentk) + [BASS](https://www.un4seen.com/bass.html)
@@ -6,7 +13,7 @@ OpenTK provides .NET bindings for [GLFW](https://github.com/glfw/glfw), which ha
 
 BASS provides the audio decoding and playback + tools for FFT analysis to generate waveforms
 
-This engine was originally created to power [my rhythm game client, Interlude](https://github.com/YAVSRG/Interlude), it has been extracted to be its own library so that
+This engine was originally created to power [my rhythm game client, Interlude](https://github.com/YAVSRG/YAVSRG), it has been extracted to be its own library so that
 - It is available under MIT license for anyone to use, dissect or otherwise find useful
 - It can also power a planned separate rhythm game chart editor
 - I can use it for game jams or generally as reference code for other future game projects
